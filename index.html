@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <title>Molecular 3D Viewer - Learn WGPU</title>
+        <style>
+            body {
+                margin: 0;
+                padding: 20px;
+                background-color: #1e1e1e;
+                color: white;
+                font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            }
+
+            .container {
+                max-width: 1200px;
+                margin: 0 auto;
+            }
+
+            .header {
+                text-align: center;
+                margin-bottom: 20px;
+            }
+
+            .header h1 {
+                color: #61dafb;
+                margin: 0;
+            }
+
+            .header p {
+                color: #aaa;
+                margin: 10px 0;
+            }
+
+            .viewer-container {
+                border: 2px solid #333;
+                border-radius: 8px;
+                overflow: hidden;
+                background: #000;
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            }
+
+            canvas {
+                display: block;
+                width: 100%;
+                height: 600px;
+            }
+
+            .controls {
+                margin-top: 20px;
+                padding: 15px;
+                background: #2d2d2d;
+                border-radius: 8px;
+                text-align: center;
+            }
+
+            .controls p {
+                margin: 5px 0;
+                color: #ccc;
+            }
+
+            .error {
+                color: #ff6b6b;
+                background: #4a1a1a;
+                padding: 15px;
+                border-radius: 8px;
+                margin: 20px 0;
+                border: 1px solid #ff6b6b;
+            }
+
+            .loading {
+                color: #ffd93d;
+                text-align: center;
+                padding: 20px;
+            }
+
+            .status {
+                color: #6bcf7f;
+                text-align: center;
+                padding: 10px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>🧬 Molecular 3D Viewer</h1>
+                <p>A personal WGPU learning project for visualizing protein structures</p>
+            </div>
+
+            <div id="loading" class="loading">Loading WASM module and initializing 3D viewer...</div>
+
+            <div id="error" class="error" style="display: none">
+                <h3>Error loading the viewer</h3>
+                <p id="error-message"></p>
+                <p>Please make sure your browser supports WebGL and WebAssembly.</p>
+            </div>
+
+            <div class="viewer-container" id="viewer-container" style="display: none">
+                <canvas id="wgpu-canvas"></canvas>
+            </div>
+
+            <div class="controls" id="controls" style="display: none">
+                <div style="margin-bottom: 20px">
+                    <h3>🧬 加载蛋白质文件</h3>
+                    <div style="margin: 10px 0">
+                        <label for="file-input">选择PDB文件:</label>
+                        <input type="file" id="file-input" accept=".pdb" style="margin-left: 10px" />
+                    </div>
+                    <div style="margin: 10px 0">
+                        <label for="url-input">或输入URL:</label>
+                        <input type="text" id="url-input" placeholder="http://localhost:8000/8w2s.pdb" style="margin-left: 10px; width: 300px" />
+                        <button id="load-url-btn" style="margin-left: 10px">加载</button>
+                    </div>
+                </div>
+
+                <div style="border-top: 1px solid #444; padding-top: 15px">
+                    <p><strong>控制说明:</strong></p>
+                    <p>🖱️ 鼠标拖拽: 旋转视角</p>
+                    <p>⌨️ WASD: 移动相机</p>
+                    <p>🔄 空格: 切换渲染模式</p>
+                    <p>📷 Q/E: 缩放</p>
+                </div>
+            </div>
+
+            <div id="status" class="status" style="display: none"></div>
+        </div>
+
+        <script type="module">
+            import init, { run_app, load_protein_from_file, load_protein_from_url, load_protein_from_blob } from "./pkg/learn_wgpu.js";
+
+            // Store WASM functions globally
+            let wasmFunctions = null;
+
+            async function loadViewer() {
+                try {
+                    console.log("开始加载WASM模块...");
+
+                    // Initialize the WASM module
+                    await init();
+                    console.log("WASM模块初始化成功");
+
+                    // Store functions globally for easy access
+                    wasmFunctions = {
+                        run_app,
+                        load_protein_from_file,
+                        load_protein_from_url,
+                        load_protein_from_blob,
+                    };
+
+                    // Show the canvas
+                    document.getElementById("loading").style.display = "none";
+                    document.getElementById("viewer-container").style.display = "block";
+                    document.getElementById("controls").style.display = "block";
+
+                    // Get the canvas element
+                    const canvas = document.getElementById("wgpu-canvas");
+                    console.log("Canvas元素获取成功:", canvas);
+
+                    // Set canvas size
+                    canvas.width = canvas.offsetWidth;
+                    canvas.height = canvas.offsetHeight;
+                    console.log("Canvas尺寸设置:", canvas.width, "x", canvas.height);
+
+                    // Check WebGL support
+                    const gl = canvas.getContext("webgl2") || canvas.getContext("webgl");
+                    if (!gl) {
+                        throw new Error("WebGL is not supported in this browser");
+                    }
+                    console.log("WebGL支持检查通过");
+
+                    // Start the application
+                    console.log("开始启动应用...");
+                    try {
+                        run_app();
+                        console.log("应用启动成功");
+                    } catch (appError) {
+                        console.error("应用启动失败:", appError);
+                        throw appError;
+                    }
+
+                    // Setup file handlers
+                    setupFileHandlers();
+
+                    document.getElementById("status").innerHTML = "3D Viewer loaded successfully!";
+                    document.getElementById("status").style.display = "block";
+                } catch (error) {
+                    console.error("详细错误信息:", error);
+                    console.error("错误堆栈:", error.stack);
+                    document.getElementById("loading").style.display = "none";
+                    document.getElementById("error").style.display = "block";
+                    document.getElementById("error-message").innerHTML = `
+                    <strong>错误类型:</strong> ${error.name || "Unknown"}<br>
+                    <strong>错误信息:</strong> ${error.message || error.toString()}<br>
+                    <strong>错误详情:</strong> 请检查浏览器控制台获取更多信息
+                `;
+                }
+            }
+
+            function setupFileHandlers() {
+                // File input handler
+                const fileInput = document.getElementById("file-input");
+                fileInput.addEventListener("change", async (event) => {
+                    const file = event.target.files[0];
+                    if (file) {
+                        try {
+                            console.log("Loading file:", file.name);
+                            document.getElementById("status").innerHTML = `正在加载文件: ${file.name}...`;
+                            await load_protein_from_file(file);
+                            document.getElementById("status").innerHTML = `成功加载文件: ${file.name}`;
+                        } catch (error) {
+                            console.error("Failed to load file:", error);
+                            document.getElementById("error-message").textContent = `加载文件失败: ${error}`;
+                            document.getElementById("error").style.display = "block";
+                        }
+                    }
+                });
+
+                // URL input handler
+                const urlInput = document.getElementById("url-input");
+                const loadUrlBtn = document.getElementById("load-url-btn");
+
+                const loadFromUrl = async () => {
+                    const url = urlInput.value.trim();
+                    if (url) {
+                        try {
+                            console.log("Loading from URL:", url);
+                            document.getElementById("status").innerHTML = `正在从URL加载: ${url}...`;
+                            await load_protein_from_url(url);
+                            document.getElementById("status").innerHTML = `成功从URL加载: ${url}`;
+                        } catch (error) {
+                            console.error("Failed to load from URL:", error);
+                            document.getElementById("error-message").textContent = `从URL加载失败: ${error}`;
+                            document.getElementById("error").style.display = "block";
+                        }
+                    }
+                };
+
+                loadUrlBtn.addEventListener("click", loadFromUrl);
+                urlInput.addEventListener("keypress", (event) => {
+                    if (event.key === "Enter") {
+                        loadFromUrl();
+                    }
+                });
+
+                // Drag and drop support
+                const canvas = document.getElementById("wgpu-canvas");
+
+                canvas.addEventListener("dragover", (event) => {
+                    event.preventDefault();
+                    canvas.style.backgroundColor = "#333";
+                });
+
+                canvas.addEventListener("dragleave", (event) => {
+                    event.preventDefault();
+                    canvas.style.backgroundColor = "#000";
+                });
+
+                canvas.addEventListener("drop", async (event) => {
+                    event.preventDefault();
+                    canvas.style.backgroundColor = "#000";
+
+                    const files = event.dataTransfer.files;
+                    if (files.length > 0) {
+                        const file = files[0];
+                        if (file.name.toLowerCase().endsWith(".pdb")) {
+                            try {
+                                console.log("Loading dropped file:", file.name);
+                                document.getElementById("status").innerHTML = `正在加载拖拽文件: ${file.name}...`;
+                                await load_protein_from_file(file);
+                                document.getElementById("status").innerHTML = `成功加载拖拽文件: ${file.name}`;
+                            } catch (error) {
+                                console.error("Failed to load dropped file:", error);
+                                document.getElementById("error-message").textContent = `加载拖拽文件失败: ${error}`;
+                                document.getElementById("error").style.display = "block";
+                            }
+                        } else {
+                            document.getElementById("error-message").textContent = "请拖拽PDB文件(.pdb)";
+                            document.getElementById("error").style.display = "block";
+                        }
+                    }
+                });
+            }
+
+            // Handle canvas resize
+            window.addEventListener("resize", () => {
+                const canvas = document.getElementById("wgpu-canvas");
+                if (canvas) {
+                    canvas.width = canvas.offsetWidth;
+                    canvas.height = canvas.offsetHeight;
+                    console.log("Canvas尺寸更新:", canvas.width, "x", canvas.height);
+                }
+            });
+
+            // Load the viewer when page is ready
+            console.log("页面加载完成，开始初始化...");
+            loadViewer()
+                .then(() => {
+                    // 自动加载测试蛋白质文件
+                    setTimeout(async () => {
+                        console.log("尝试自动加载测试蛋白质...");
+                        try {
+                            if (wasmFunctions && wasmFunctions.load_protein_from_url) {
+                                await wasmFunctions.load_protein_from_url("pkg/8w2s.pdb");
+                                console.log("测试蛋白质加载成功!");
+                            } else {
+                                console.warn("WASM函数尚未准备好");
+                            }
+                        } catch (error) {
+                            console.warn("自动加载测试蛋白质失败:", error);
+                        }
+                    }, 2000);
+                })
+                .catch((error) => {
+                    console.error("初始化失败:", error);
+                });
+        </script>
+    </body>
+</html>

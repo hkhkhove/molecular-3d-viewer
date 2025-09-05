@@ -1,0 +1,41 @@
+{
+  "proteins": [
+    {
+      "path": "8w2s.pdb",
+      "styles": ["BallAndStick","MolecularSurface"],
+      "show_hydrogens": false,
+      "color_scheme": "Element",
+      "opacity": 0.7,
+      "visible": true
+    }
+  ],
+  "surface": {
+    "grid_resolution": 32,
+    "probe_radius": 1.4,
+    "iso_level": 0.5,
+    "surface_type": "SolventAccessible"
+  },
+  "render": {
+    "window_size": [1024, 768],
+    "window_title": "Molecular 3D Viewer",
+    "background_color": [0.1, 0.1, 0.1, 1.0],
+    "enable_msaa": true,
+    "show_axes": true,
+    "lighting": {
+      "ambient_intensity": 0.3,
+      "diffuse_intensity": 0.7,
+      "specular_intensity": 0.5,
+      "light_direction": [-0.5, -1.0, -0.5]
+    }
+  },
+  "camera": {
+    "position": [0.0, 0.0, 50.0],
+    "target": [0.0, 0.0, 0.0],
+    "up": [0.0, 1.0, 0.0],
+    "fov_degrees": 45.0,
+    "near": 0.1,
+    "far": 1000.0,
+    "move_speed": 4.0,
+    "rotation_speed": 0.01
+  }
+}
