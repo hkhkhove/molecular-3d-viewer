@@ -18,6 +18,7 @@ A 3D molecular visualization tool built with Rust and wgpu. This is a personal l
 -   **Element-based Coloring**: Automatic atom coloring by element type
 -   **Molecular Type Recognition**: Different colors for proteins, DNA, RNA
 -   **Real-time Lighting**: Phong lighting model with ambient and diffuse components
+-   **WebAssembly**
 
 ## Controls
 
@@ -35,7 +36,7 @@ A 3D molecular visualization tool built with Rust and wgpu. This is a personal l
 ### Building and Running
 
 ```bash
-git clone https://github.com/hkhkhove/molecular-3d-viewer
+git clone https://github.com/hkhkhove/molecular-3d-viewer.git
 cd molecular-3d-viewer
 
 # Build the project
